@@ -1,3 +1,6 @@
 = ZE-TOOLS
 
-personal tools library
+personal lightweight tools library
+
+. **ECS**: ECS framework
+. **Allocator**: memory pool, allocator with over-aligned supported
