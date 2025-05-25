@@ -7,4 +7,5 @@ set(CXX_STANDARD_REQUIRED ON)
 set(CXX_EXTENSIONS ON)
 
 add_subdirectory(ECS)
+add_subdirectory(Collection)
 #add_subdirectory(Allocator)
