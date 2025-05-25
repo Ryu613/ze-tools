@@ -5,8 +5,8 @@
             "name": "debug-x64",
             "inherits": "debug",
             "environment": {
-                "C_COMPILER_PATH":"F:/dev/mingw/mingw64/bin",
-                "CXX_COMPILER_PATH":"F:/dev/mingw/mingw64/bin"
+                //"C_COMPILER_PATH":"F:/dev/mingw/mingw64/bin",
+                //"CXX_COMPILER_PATH":"F:/dev/mingw/mingw64/bin"
             }
         }
     ]

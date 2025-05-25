@@ -18,7 +18,7 @@ namespace ze::ecs {
 
 	// destroy entity
 	void destroy_entity(Entity e) {
-
+		return EcsManager::Get().DestroyEntity(e);
 	}
 
 	// add component data to exist entity with those components

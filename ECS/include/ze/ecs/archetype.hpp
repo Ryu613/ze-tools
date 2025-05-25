@@ -3,6 +3,8 @@
 #include <bitset>
 #include <vector>
 #include <array>
+#include <limits>
+#include <functional>
 
 #include "ze/ecs/entity.hpp"
 
@@ -28,10 +30,11 @@ namespace ze::ecs {
 	class Chunk {
 	public:
 		explicit Chunk(const ComponentSignature& sig)
-			: signature(sig) {
-			for (size_t i = 0; i < COMPONENT_SIZE; ++i) {
-				if (sig.test(i)) {
-					component_buffers.push_back(::operator new[](CHUNK_CAPACITY* component_size[i]));
+			: signature_(sig) {
+			for (size_t type_id = 0; type_id < COMPONENT_SIZE; ++type_id) {
+				if (sig.test(type_id)) {
+					buffer_type_ids.push_back(type_id);
+					component_buffers.push_back(::operator new[](CHUNK_CAPACITY * component_sizes[type_id]));
 				}
 			}
 		}
@@ -49,28 +52,52 @@ namespace ze::ecs {
 		template<typename TComponent>
 		void InsertComponentData(Entity e, const TComponent& comp) {
 			size_t type_id = ComponentTypeId::GetTypeId<TComponent>();
-			size_t buf_index = 0;
-			for (size_t i = 0; i < type_id; ++i) {
-				if (signature.test(i)) {
-					++buf_index;
-				}
+			auto it = std::find(buffer_type_ids.begin(), buffer_type_ids.end(), type_id);
+			if (it == buffer_type_ids.end()) {
+				throw std::runtime_error("Component type not in this Chunk");
 			}
+			size_t buf_index = it - buffer_type_ids.begin();
 			size_t index = count++;
 			entities[index] = e;
 			void* raw_buf = component_buffers[buf_index];
-			new (static_cast<char*>(raw_buf) + index * sizeof(TComponent)) TComponent(comp);
+			new (static_cast<char*>(raw_buf) + index * component_sizes[type_id]) TComponent(comp);
+		}
+
+		void Remove(Entity e) {
+			for (size_t i = 0; i < count; ++i) {
+				if (entities[i] == e) {
+					--count;
+					// if entity is not the last one of entities, swap entity id for keeping memory density
+					if (i != count) {
+						entities[i] = entities[count];
+						for (size_t j = 0; j < component_buffers.size(); ++j) {
+							size_t type_id = buffer_type_ids[j];
+							// swap the last of entity's data to removed entity's place
+							std::memcpy(
+								static_cast<char*>(component_buffers[j]) + i * component_sizes[type_id],
+								static_cast<char*>(component_buffers[j]) + count * component_sizes[type_id],
+								component_sizes[type_id]
+							);
+							std::function<void(void*)> destructors[COMPONENT_SIZE];
+
+						}
+					}
+					return;
+				}
+			}
 		}
 
 		// component size mapped by component type id
-		static inline std::array<size_t, COMPONENT_SIZE> component_size;
+		static inline std::array<size_t, COMPONENT_SIZE> component_sizes;
 
 	private:
+		ComponentSignature signature_;
+		// how much data this chunk has
 		size_t count = 0;
-
-		std::array<Entity, CHUNK_CAPACITY> entities;
-
-		ComponentSignature signature;
 		// to mark each data belongs to which entity
+		std::array<Entity, CHUNK_CAPACITY> entities;
+		// buffer and type_id reference
+		std::vector<size_t> buffer_type_ids;
 		// buffers for each component type of archetype
 		std::vector<void*> component_buffers;
 	};
@@ -78,26 +105,33 @@ namespace ze::ecs {
 	class Archetype {
 	public:
 		explicit Archetype(ComponentSignature sig)
-			: signature(sig) {
+			: signature_(sig) {
 		}
 
 		Chunk* GetOrCreateChunk() {
-			if (!chunks.empty() && chunks.back()->GetCount() < CHUNK_CAPACITY) {
-				return chunks.back().get();
+			if (!chunks_.empty() && chunks_.back()->GetCount() < CHUNK_CAPACITY) {
+				return chunks_.back().get();
 			}
-			chunks.emplace_back(std::make_unique<Chunk>(signature));
-			return chunks.back().get();
+			chunks_.emplace_back(std::make_unique<Chunk>(signature_));
+			return chunks_.back().get();
 		}
 
 		template<typename... TComponents>
 		void InsertComponentData(Entity e, const TComponents&... comps) {
 			Chunk* chunk = GetOrCreateChunk();
 			// insert components data to chunk
-			(chunk->InsertComponentData<TComponents>(e, comps), ...);
+			(...,(chunk->InsertComponentData<TComponents>(e, comps)));
+		}
+
+
+		void Remove(Entity e) {
+			for (auto& chunk : chunks_) {
+				chunk->Remove(e);
+			}
 		}
 
 	private:
-		ComponentSignature signature;
-		std::vector<std::unique_ptr<Chunk>> chunks;
+		ComponentSignature signature_;
+		std::vector<std::unique_ptr<Chunk>> chunks_;
 	};
 }
