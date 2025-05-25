@@ -61,6 +61,7 @@ namespace ze::ecs {
 	public:
 		explicit Chunk(const ComponentSignature& sig)
 			: signature_(sig) {
+			entity_ids_.fill(std::numeric_limits<EntityIdType>::max());
 			for (size_t type_id = 0; type_id < COMPONENT_SIZE; ++type_id) {
 				if (sig.test(type_id)) {
 					component_buffers_[type_id] = (::operator new[](CHUNK_CAPACITY * ComponentTypeInfo::GetSize(type_id)));
