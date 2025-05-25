@@ -8,8 +8,8 @@ struct Position {
 };
 
 struct Attr {
-    // not trivial
-    //std::string name;
+    // not trivial! not support now
+    // std::string name;
     int hp;
     int mp;
 };
@@ -27,7 +27,7 @@ struct Extra {
 };
 
 struct Another {
-    std::string str;
+    float layer;
 };
 
 int main() {
@@ -37,23 +37,17 @@ int main() {
         Attr{ 120, 100 }
     );
     // add Position & Attr component data to e
-    ecs::add_component_data<Position, Attr>(e, Position{ 20,10,20 }, Attr{ 20, 105 });
+    ecs::add_component<Position, Attr>(e, Position{ 20,10,20 }, Attr{ 20, 105 });
     // add Position component data to e
-    ecs::add_component_data<Position>(e, Position{ 20, 10, 20 });
-    // error! Extra is not exist in e
-    ecs::add_component_data<Extra>(e, Extra{});
-    // add new component(empty data) to e
+    ecs::add_component<Position>(e, Position{ 20, 10, 20 });
+    // add new component Extra to e
     ecs::add_component<Extra>(e, Extra{});
-    // error! Position is exist in e
-    ecs::add_component<Position, Another>(e, Position{ 20,40,20 }, Another{ "tehe" });
-    // add new component Another to e
-    ecs::add_component<Another>(e, { "tehe" });
+    // add new component Another and add these data to component
+    ecs::add_component<Position, Another>(e, Position{ 20,40,20 }, Another{ 1.135656888 });
     // true
     ecs::has_components<Attr>(e);
     // remove Another component from e
     ecs::remove_components<Another>(e);
-    // remove Another component from All, is it necessary?
-    //ecs::remove_component_all<Another>();
     // destroy entity e
     ecs::destroy_entity(e);
     // register new system and enable it

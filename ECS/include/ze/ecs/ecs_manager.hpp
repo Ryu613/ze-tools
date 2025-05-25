@@ -37,6 +37,11 @@ namespace ze::ecs {
 			entity_to_archetype_.erase(it);
 		}
 
+		template<typename... TComponents, typename... ARGS>
+		void AddComponent(Entity e, const ARGS&... comps) {
+
+		}
+
 	private:
 		EcsManager() = default;
 
