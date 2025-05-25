@@ -8,8 +8,10 @@ struct Position {
 };
 
 struct Attr {
-    std::string name;
+    // not trivial
+    //std::string name;
     int hp;
+    int mp;
 };
 
 class MoveSystem : ecs::System<MoveSystem> {
@@ -32,10 +34,10 @@ int main() {
     ecs::init();
     ecs::Entity e = ecs::make_entity<Position, Attr>(
         Position{ 50,24,12 },
-        Attr{ "john", 100 }
+        Attr{ 120, 100 }
     );
     // add Position & Attr component data to e
-    ecs::add_component_data<Position, Attr>(e, Position{ 20,10,20 }, Attr{ "mary", 105 });
+    ecs::add_component_data<Position, Attr>(e, Position{ 20,10,20 }, Attr{ 20, 105 });
     // add Position component data to e
     ecs::add_component_data<Position>(e, Position{ 20, 10, 20 });
     // error! Extra is not exist in e

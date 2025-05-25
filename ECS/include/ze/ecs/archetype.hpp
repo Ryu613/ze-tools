@@ -1,10 +1,11 @@
 #pragma once
 
+#include <cstddef>
 #include <bitset>
 #include <vector>
 #include <array>
-#include <limits>
-#include <functional>
+#include <type_traits>
+#include <cassert>
 
 #include "ze/ecs/entity.hpp"
 
@@ -14,16 +15,45 @@ namespace ze::ecs {
 
 	using ComponentSignature = std::bitset<COMPONENT_SIZE>;
 
-	// get type id for different Component
-	class ComponentTypeId {
+	using EntityIdType = Entity::IdType;
+
+	// componentTypeInfo
+	// only support trivial component for now
+	class ComponentTypeInfo {
 	public:
 		template<typename T>
 		static size_t GetTypeId() {
 			static const size_t id = counter++;
+			registerType<T>(id);
 			return id;
 		}
+
+		static size_t GetSize(size_t type_id) {
+			return component_sizes[type_id];
+		}
+
+		//static void Destroy(size_t type_id, void* ptr) {
+		//	component_vtables[type_id].destroy(ptr);
+		//}
+
 	private:
-		 static inline size_t counter = 0;
+
+		//struct VTable {
+		//	void (*destroy)(void*) = nullptr;
+		//};
+
+		template<typename T>
+		static bool registerType(size_t id) noexcept {
+			static_assert(std::is_trivially_destructible_v<T>,
+				"Component must be trivially destructible (no std::string, std::vector, etc.)");
+			component_sizes[id] = sizeof(T);
+			//component_vtables[id].destroy = [](void* p) { reinterpret_cast<T*>(p)->~T(); };
+			return true;
+		}
+
+		static inline std::array<size_t, COMPONENT_SIZE> component_sizes{};
+		//static inline std::array<VTable, COMPONENT_SIZE> component_vtables{};
+		static inline size_t counter = 0;
 	};
 
 
@@ -33,15 +63,21 @@ namespace ze::ecs {
 			: signature_(sig) {
 			for (size_t type_id = 0; type_id < COMPONENT_SIZE; ++type_id) {
 				if (sig.test(type_id)) {
-					buffer_type_ids.push_back(type_id);
-					component_buffers.push_back(::operator new[](CHUNK_CAPACITY * component_sizes[type_id]));
+					component_buffers_[type_id] = (::operator new[](CHUNK_CAPACITY * ComponentTypeInfo::GetSize(type_id)));
 				}
 			}
 		}
 
 		~Chunk() {
-			for (void* buf : component_buffers) {
-				::operator delete[](buf);
+			for (size_t type_id = 0; type_id < COMPONENT_SIZE; ++type_id) {
+				if (signature_.test(type_id)) {
+					std::byte* raw_buf_ptr = static_cast<std::byte*>(component_buffers_[type_id]);
+					size_t type_size = ComponentTypeInfo::GetSize(type_id);
+					//for (size_t j = 0; j < count; ++j) {
+					//	ComponentTypeInfo::Destroy(type_id, raw_buf_ptr + j * type_size);
+					//}
+					::operator delete[](component_buffers_[type_id]);
+				}
 			}
 		}
 
@@ -51,55 +87,48 @@ namespace ze::ecs {
 
 		template<typename TComponent>
 		void InsertComponentData(Entity e, const TComponent& comp) {
-			size_t type_id = ComponentTypeId::GetTypeId<TComponent>();
-			auto it = std::find(buffer_type_ids.begin(), buffer_type_ids.end(), type_id);
-			if (it == buffer_type_ids.end()) {
-				throw std::runtime_error("Component type not in this Chunk");
-			}
-			size_t buf_index = it - buffer_type_ids.begin();
+			size_t type_id = ComponentTypeInfo::GetTypeId<TComponent>();
+			assert(signature_.test(type_id) && "Component type not in this Chunk");
 			size_t index = count++;
-			entities[index] = e;
-			void* raw_buf = component_buffers[buf_index];
-			new (static_cast<char*>(raw_buf) + index * component_sizes[type_id]) TComponent(comp);
+			entity_ids_[index] = e.GetId();
+			void* raw_buf = component_buffers_[type_id];
+			new (static_cast<std::byte*>(raw_buf) + index * ComponentTypeInfo::GetSize(type_id)) TComponent(comp);
 		}
 
 		void Remove(Entity e) {
 			for (size_t i = 0; i < count; ++i) {
-				if (entities[i] == e) {
+				if (entity_ids_[i] == e.GetId()) {
 					--count;
 					// if entity is not the last one of entities, swap entity id for keeping memory density
 					if (i != count) {
-						entities[i] = entities[count];
-						for (size_t j = 0; j < component_buffers.size(); ++j) {
-							size_t type_id = buffer_type_ids[j];
-							// swap the last of entity's data to removed entity's place
-							std::memcpy(
-								static_cast<char*>(component_buffers[j]) + i * component_sizes[type_id],
-								static_cast<char*>(component_buffers[j]) + count * component_sizes[type_id],
-								component_sizes[type_id]
-							);
-							std::function<void(void*)> destructors[COMPONENT_SIZE];
-
+						entity_ids_[i] = entity_ids_[count];					
+					}
+					for (size_t type_id = 0; type_id < COMPONENT_SIZE; ++type_id) {
+						if (!signature_.test(type_id)) {
+							continue;
 						}
+						size_t type_size = ComponentTypeInfo::GetSize(type_id);
+						std::byte* dst = static_cast<std::byte*>(component_buffers_[type_id]) + i * type_size;
+						std::byte* src = static_cast<std::byte*>(component_buffers_[type_id]) + count * type_size;
+						// invoke destructor of component
+						//ComponentTypeInfo::Destroy(type_id, dst);
+						// swap the last of entity's data to removed entity's place
+						std::memcpy(dst, src, type_size);
 					}
 					return;
 				}
 			}
 		}
 
-		// component size mapped by component type id
-		static inline std::array<size_t, COMPONENT_SIZE> component_sizes;
 
 	private:
 		ComponentSignature signature_;
-		// how much data this chunk has
+		// how many data this chunk has
 		size_t count = 0;
 		// to mark each data belongs to which entity
-		std::array<Entity, CHUNK_CAPACITY> entities;
-		// buffer and type_id reference
-		std::vector<size_t> buffer_type_ids;
+		std::array<EntityIdType, CHUNK_CAPACITY> entity_ids_;
 		// buffers for each component type of archetype
-		std::vector<void*> component_buffers;
+		std::array<void*, COMPONENT_SIZE> component_buffers_{};
 	};
 
 	class Archetype {

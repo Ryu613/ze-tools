@@ -14,6 +14,10 @@ namespace ze::ecs {
 			return id_ == NULL_ID;
 		}
 
+		IdType GetId() const noexcept {
+			return id_;
+		}
+
 		bool operator==(const Entity& e) {
 			return id_ == e.id_;
 		}
