@@ -1,17 +1,131 @@
 = ZE-TOOLS
 :toc:
 
-personal lightweight tools library
+lightweight {cpp} tools library
 
 [NOTE]
 ====
 [.red]##WORK IN PROGRESS##
 ====
 
-. **ECS**: ECS framework
 . **Allocator**: memory pool, allocator with over-aligned supported
+. **Collection**: useful collections
+. **ECS**: ECS framework
+
+== allocator
+
+This Arena framework is a modern, policy-based memory allocator designed for high performance, flexibility, and maintainability. It decouples memory strategies using a highly composable architecture, enabling a wide variety of allocation schemes while maintaining maximum control over behavior.
+
+The Arena class template accepts four policy types:
+
+* ResourcePolicy: Manages the raw memory buffer.
+
+* AllocatorPolicy: Implements the allocation algorithm on top of the resource.
+
+* LockingPolicy: Defines thread-safety behavior.
+
+* TrackingPolicy: Handles allocation tracking and logging.
+
+This design supports configurations such as:
+
+* Linear or heap-based memory pooling
+
+* Stateless or stateful allocators
+
+* Lock-free or thread-safe allocations
+
+* Silent or verbose logging of allocations
+
+=== usage
+
+[source, c++]
+----
+	using HeapAllocator = ze::Arena<
+		ze::ResourcePolicy::NullResource,
+		ze::AllocatorPolicy::RawHeapAllocator,
+		ze::LockingPolicy::NoLock,
+		ze::TrackingPolicy::Untracked
+	>;
+
+    MyArena arena("FastPool", 1024 * 1024); // 1MB pool
+    void* p = arena.alloc(64, 16);
+----
+
+== collection
+
+=== sparse_set
+
+`sparse_set` is a high-performance sparse set designed for performance-sensitive scenarios, particularly useful in game engines, real-time graphics systems, ECS (Entity Component Systems), and other environments where memory access patterns and low-latency are critical.
+
+It is based on a "dense + sparse" dual-mapping structure that offers extremely fast insert, query, and delete operations (theoretically constant time). Furthermore, it provides cache-friendly sequential iteration, greatly outperforming traditional STL containers like `std::unordered_set` in terms of traversal and locality.
+
+=== Features
+
+* 🚀 **O(1) Complexity**: Insert, delete, and lookup operations all have constant time complexity.
+* 🧠 **High Locality**: `dense_` array is stored contiguously, supporting fast iteration and SIMD optimizations.
+* 🔬 **Customizable Types**: Supports a generic `T` type (default `uint32_t`), with indices stored in `sparse_[T]`.
+* 🛠️ **Allocator Support**: Full support for `std::pmr` polymorphic memory resources, making it easy to integrate with memory pools.
+* 🧹 **No Overhead**: Lightweight structure, zero additional vtables, no hidden heap allocations.
+* 💡 **Engineering Friendly**: Header-only implementation, easy to integrate; provides STL-style interfaces, iterators, `find`, `clear`, and more standard methods.
+
+=== Performance Comparison
+
+Based on a benchmark with 1 million random entries, the following performance results were observed (Release / MSVC):
+
+x64, windows10, VS2022, cmake release mode:
+[source]
+----
+sparse_set run 1: 13 ms
+pmr_sparse_set run 1: 30 ms
+unordered_set run 1: 90 ms
+----
+
+On average, `sparse_set` provides **6-8x faster** insert, lookup, and delete performance compared to `std::unordered_set`.
+
+=== usage
+
+[source,cpp]
+----
+#include "sparse_set.hpp"
+
+sparse_set<uint32_t> s;
+s.insert(42);
+if (s.contains(42)) {
+    s.erase(42);
+}
+----
+
+=== pmr support
+
+If you need custom allocators (e.g., using thread-local memory pools, arenas, monotonic allocation, etc.), you can use the `pmr_sparse_set` version:
+
+[source,cpp]
+----
+std::array<std::byte, 1024 * 1024> buffer;
+std::pmr::monotonic_buffer_resource pool(buffer.data(), buffer.size());
+
+pmr::sparse_set<uint32_t> s(64, &pool);
+s.insert(1);
+----
 
 == ECS
+
+This is a basic implementation of an Entity Component System (ECS) designed for high-performance and flexible data-driven game development. The system utilizes archetypes, chunks, and components, ensuring an efficient way of managing entities and their associated data.
+
+=== Features
+- Efficient memory management with custom allocators and pooling
+- Support for both trivial and non-trivial component types
+- Optimized for cache locality and quick iteration
+- Component signature system for fast type-based filtering
+- Simple API to create, remove, and update entities
+
+== Architecture Overview
+The ECS is designed around the following key concepts:
+
+* **Entity**: An identifier for a game object or entity.
+* **Component**: A data structure representing a single aspect of an entity.
+* **Archetype**: A grouping of entities that share the same set of components.
+* **Chunk**: A contiguous block of memory used to store entities' components, improving cache locality and access speed.
 
 === usage
 
@@ -54,17 +168,3 @@ int main() {
 }
 ----
 
-== collection
-
-=== sparse_set
-
-benchmark test:
-
-x64, windows10, VS2022, cmake release mode:
-====
-sparse_set:      ~12-17 ms
-pmr_sparse_set   ~40-60 ms
-unordered_set:   ~88-104 ms
-
-sparse_set is about 6-8 times faster than unordered_set
-====
