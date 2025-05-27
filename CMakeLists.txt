@@ -6,6 +6,6 @@ set(CMAKE_CXX_STANDARD 20)
 set(CXX_STANDARD_REQUIRED ON)
 set(CXX_EXTENSIONS ON)
 
-add_subdirectory(ECS)
+add_subdirectory(Allocator)
 add_subdirectory(Collection)
-#add_subdirectory(Allocator)
+add_subdirectory(ECS)
