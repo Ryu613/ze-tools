@@ -38,13 +38,13 @@ namespace ze {
 		/**
 		* heap allocator: only alloc aligned, not a pool allocator
 		*/
-		class HeapAllocator {
+		class RawHeapAllocator {
 		public:
-			HeapAllocator() noexcept = default;
-			~HeapAllocator() noexcept = default;
+			RawHeapAllocator() noexcept = default;
+			~RawHeapAllocator() noexcept = default;
 
 			template <typename AreaPolicy>
-			explicit HeapAllocator(const AreaPolicy&&) {}
+			explicit RawHeapAllocator(const AreaPolicy&&) {}
 
 			void* alloc(size_t size, size_t alignment = alignof(std::max_align_t)) {
 				return aligned_alloc(alignment, size);
@@ -57,8 +57,9 @@ namespace ze {
 	} // namespace AllocatorPolicy
 
 	namespace TrackingPolicy {
-		struct Untracked {
-
+		class NoTracking {
+		public:
+			void on_alloc(const void*, size_t, size_t) noexcept {}
 		};
 	} // namespace TrackingPolicy
 
@@ -68,20 +69,43 @@ namespace ze {
 			HeapResource() noexcept = default;
 			explicit HeapResource(size_t size) {
 				if (size) {
-					//begin_ = 
+					begin_ = malloc(size);
+					end_ = static_cast<std::byte*>(begin_) + size;
 				}
 			}
+
+			~HeapResource() noexcept {
+				free(begin_);
+			}
+
+			HeapResource(const HeapResource& rhs) = delete;
+			HeapResource& operator=(const HeapResource& rhs) = delete;
+			HeapResource(HeapResource&& rhs) noexcept = delete;
+			HeapResource& operator=(HeapResource&& rhs) noexcept = delete;
+
+			void* data() const noexcept { return begin_; }
+			void* begin() const noexcept { return begin_; }
+			void* end() const noexcept { return end_; }
+			size_t size() const noexcept { return uintptr_t(end_) - uintptr_t(begin_); }
+
 		private:
 			void* begin_ = nullptr;
 			void* end_ = nullptr;
 		};
 
 		class NullResource {
+		public:
+			void* data() const noexcept { return nullptr; }
+			size_t size() const noexcept { return 0; }
 		};
 	}
 
 	namespace LockingPolicy {
-		struct NoLock {};
+		class NoLock {
+		public:
+			void lock() noexcept {}
+			void unlock() noexcept {}
+		};
 	}
 
 	/**
@@ -112,7 +136,9 @@ namespace ze {
 		}
 
 		void* alloc(size_t size, size_t alignment = alignof(std::max_align_t)) noexcept {
+			lock_.lock();
 			allocator_.alloc(size, alignment);
+			lock_.unlock();
 		}
 	private:
 		const char* name_ = nullptr;
