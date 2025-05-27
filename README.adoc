@@ -10,3 +10,17 @@ personal lightweight tools library
 
 . **ECS**: ECS framework
 . **Allocator**: memory pool, allocator with over-aligned supported
+
+== collection
+
+=== sparse_set
+
+benchmark test:
+
+x64, windows10, VS2022, cmake release mode:
+====
+sparse_set:      ~12-17 ms
+unordered_set:   ~88-104 ms
+
+sparse_set is about 6-8 times faster than unordered_set
+====

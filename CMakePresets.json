@@ -20,7 +20,7 @@
         },
         {
             "name": "release",
-            "inherits": "debug",
+            "inherits": "default",
             "hidden":true,
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release"
