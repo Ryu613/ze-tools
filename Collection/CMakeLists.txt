@@ -4,9 +4,9 @@ project(ZE_TOOLS_COLLECTION)
 
 file(GLOB_RECURSE ze_tools_collection_src CONFIGURE_DEPENDS include/*.hpp src/*.cpp)
 
-add_library(ze_tools_collection STATIC ${ze_tools_collection_src})
+add_library(ze_tools_collection INTERFACE ${ze_tools_collection_src})
 
-target_include_directories(ze_tools_collection PUBLIC include)
+target_include_directories(ze_tools_collection INTERFACE include)
 
 add_executable(test_sparse_set test/test_sparse_set.cpp)
 
