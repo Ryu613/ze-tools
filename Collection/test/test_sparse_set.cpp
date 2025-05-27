@@ -49,9 +49,9 @@ int main() {
         benchmark([&]() {
             std::pmr::unsynchronized_pool_resource  pool;
             pmr::sparse_set<uint32_t> s(64, &pool);
-            for (auto x : data) s.insert(x);
-            for (auto x : data) s.contains(x);
-            for (auto x : data) s.erase(x);
+            for (size_t i = 0; i < N / 2; ++i) s.insert(i);
+            for (size_t i = 0; i < N; ++i) s.contains(i);
+            for (size_t i = 0; i < N / 4; ++i) s.erase(i);
             }, "pmr_sparse_set run " + std::to_string(i + 1));
 
         benchmark([&]() {

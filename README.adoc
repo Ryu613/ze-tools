@@ -72,15 +72,19 @@ It is based on a "dense + sparse" dual-mapping structure that offers extremely f
 
 Based on a benchmark with 1 million random entries, the following performance results were observed (Release / MSVC):
 
-x64, windows10, VS2022, cmake release mode:
+C++20, x64, windows10, VS2022, cmake release mode:
 [source]
 ----
-sparse_set run 1: 13 ms
-pmr_sparse_set run 1: 30 ms
-unordered_set run 1: 90 ms
+sparse_set run 1: 16 ms
+pmr::sparse_set run 1: 5 ms // unsynchronized_pool_resource
+unordered_set run 1: 108 ms
 ----
 
 On average, `sparse_set` provides **6-8x faster** insert, lookup, and delete performance compared to `std::unordered_set`.
+
+and pmr_sparse_set(with unsynchronized_pool_resource) even better
+
+see Collection/test/test_sparse_set.cpp
 
 === usage
 
