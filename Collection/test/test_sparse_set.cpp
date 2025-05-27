@@ -1,4 +1,5 @@
 #include "ze/collection/sparse_set.hpp"
+#include "ze/collection/pmr_sparse_set.hpp"
 
 #include <random>
 #include <chrono>
@@ -6,6 +7,7 @@
 #include <vector>
 #include <iostream>
 #include <unordered_set>
+#include <array>
 
 using namespace ze::collection;
 
@@ -32,6 +34,7 @@ long long benchmark(Func func, const std::string& label) {
 
 int main() {
     auto data = generate_random_input(N, N * 2);
+    auto buffer = std::make_unique<std::byte[]>(64 * 1024 * 1024);
 
     for (size_t i = 0; i < TEST_RUNS; ++i) {
         uint32_t max_x = *std::max_element(data.begin(), data.end());
@@ -42,6 +45,14 @@ int main() {
             for (size_t i = 0; i < N; ++i) s.contains(data[i]);
             for (size_t i = 0; i < N / 4; ++i) s.erase(data[i]);
             }, "sparse_set run " + std::to_string(i + 1));
+
+        benchmark([&]() {
+            std::pmr::unsynchronized_pool_resource  pool;
+            pmr::sparse_set<uint32_t> s(64, &pool);
+            for (auto x : data) s.insert(x);
+            for (auto x : data) s.contains(x);
+            for (auto x : data) s.erase(x);
+            }, "pmr_sparse_set run " + std::to_string(i + 1));
 
         benchmark([&]() {
             std::unordered_set<uint32_t> s(max_x + 1);
