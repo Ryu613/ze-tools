@@ -128,6 +128,11 @@ namespace ze {
 	public:
 		Arena() = default;
 
+		Arena(const char* name)
+			: name_(name),
+			allocator_(mem_resource_) {
+		}
+
 		template<typename ... ARGS>
 		Arena(const char* name, size_t size, ARGS&& ... args)
 			: name_(name),
