@@ -53,6 +53,10 @@ namespace ze {
 			void free(void* p) noexcept {
 				aligned_free(p);
 			}
+
+			void free(void* p, size_t size) noexcept {
+				free(p);
+			}
 		};
 	} // namespace AllocatorPolicy
 
@@ -145,6 +149,28 @@ namespace ze {
 			allocator_.alloc(size, alignment);
 			lock_.unlock();
 		}
+
+		void free(void* p, size_t size) noexcept {
+			if (p) {
+				allocator_.free(p, size);
+			}
+		}
+
+		template<typname T, size_t ALIGN = alignof(T), typename... ARGS>
+		T* make(ARGS&&... args) noexcept {
+			const void* p = alloc(sizeof(T), ALIGN);
+			return p ? new(p) T(std::forward<ARGS>(args)...) : nullptr;
+		}
+
+		template<typename T>
+		void destroy(T* p) noexcept {
+			if (p) {
+				p->~T();
+				free((void*)p, sizeof(T));
+			}
+		}
+
+
 	private:
 		const char* name_ = nullptr;
 		ResourcePolicy mem_resource_;
