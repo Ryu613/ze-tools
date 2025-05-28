@@ -1,5 +1,6 @@
 = ZE-TOOLS
 :toc:
+:toclevels: 2
 
 link:README_CN.adoc[中文版]
 
@@ -61,7 +62,7 @@ This design supports configurations such as:
 
 It is based on a "dense + sparse" dual-mapping structure that offers extremely fast insert, query, and delete operations (theoretically constant time). Furthermore, it provides cache-friendly sequential iteration, greatly outperforming traditional STL containers like `std::unordered_set` in terms of traversal and locality.
 
-=== Features
+==== Features
 
 * 🚀 **O(1) Complexity**: Insert, delete, and lookup operations all have constant time complexity.
 * 🧠 **High Locality**: `dense_` array is stored contiguously, supporting fast iteration and SIMD optimizations.
@@ -70,7 +71,7 @@ It is based on a "dense + sparse" dual-mapping structure that offers extremely f
 * 🧹 **No Overhead**: Lightweight structure, zero additional vtables, no hidden heap allocations.
 * 💡 **Engineering Friendly**: Header-only implementation, easy to integrate; provides STL-style interfaces, iterators, `find`, `clear`, and more standard methods.
 
-=== Performance Comparison
+==== Performance Comparison
 
 Based on a benchmark with 1 million random entries, the following performance results were observed (Release / MSVC):
 
@@ -88,7 +89,7 @@ and pmr_sparse_set(with unsynchronized_pool_resource) even better
 
 see Collection/test/test_sparse_set.cpp
 
-=== usage
+==== usage
 
 [source,cpp]
 ----
@@ -101,7 +102,7 @@ if (s.contains(42)) {
 }
 ----
 
-=== pmr support
+==== pmr support
 
 If you need custom allocators (e.g., using thread-local memory pools, arenas, monotonic allocation, etc.), you can use the `pmr_sparse_set` version:
 
@@ -125,7 +126,7 @@ This is a basic implementation of an Entity Component System (ECS) designed for 
 - Component signature system for fast type-based filtering
 - Simple API to create, remove, and update entities
 
-== Architecture Overview
+=== Architecture Overview
 The ECS is designed around the following key concepts:
 
 * **Entity**: An identifier for a game object or entity.
