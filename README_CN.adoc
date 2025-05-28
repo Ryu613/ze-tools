@@ -1,1 +1,129 @@
-﻿
+﻿= ZE-TOOLS
+:toc:
+:toc-level: 2
+
+轻量级{cpp}工具库
+
+[NOTE]
+====
+[.red]##开发中##
+====
+
+
+== 内存分配器
+
+该 Arena 框架是一个基于“策略组合 (Policy-based Design)” 的现代化内存分配器，提供了构建性、异构性、性能和可维护性的完美并完全解耦的内存分配策略。
+
+根据 C++ 模板编程技术，该 Arena 接受下列四种策略类型：
+
+* ResourcePolicy 内存资源：控制分配的原始内存区域；
+
+* AllocatorPolicy 分配策略：对资源进行分配算法操作；
+
+* LockingPolicy 安全性策略：控制分配的级联，可选多线程安全或非线程安全；
+
+* TrackingPolicy 跟踪策略：对分配操作进行日志或分析；
+
+通过此组合设计，Arena 可以被用作:
+
+* 内存池分配器
+
+* 堆内存分配器
+
+* 静态初始化分配
+
+* 无锁优先/多线程安全
+
+* 记录/静默分配日志
+
+=== 设计优势
+
+. 组合式策略，跨场景适配
+
+Arena 通过类型变量接受各类策略，可以轻松支持不同分配策略的集成，无需修改原有代码。
+
+. Resource 分离 Allocator，最大化复用
+
+ResourcePolicy 只负责管理一块续持的内存空间，AllocatorPolicy 可以在不同场景下重复利用，或无独立状态，或无维护成本。
+
+. 动静分配约束，性能最优
+
+所有分配操作都是 inline 模板级别的，算法可在编译期展开，性能类似于手写码。
+
+. 灵活安全控制
+
+分配操作可选择是否加锁，是否日志跟踪，无需修改主逻辑
+
+=== 使用方法
+
+[source,c++]
+----
+using MyArena = Arena<
+    LinearMemoryResource,
+    RawAllocator<LinearMemoryResource>,
+    NoLock,
+    NoTracking>;
+
+MyArena arena("FastPool", 1024 * 1024); // 1MB pool
+void* p = arena.alloc(64, 16);
+----
+
+== 容器
+
+=== sparse_set(稀疏集)
+
+==== 简介
+
+`sparse_set` 是一个为性能敏感场景设计的稀疏集合实现，特别适用于游戏引擎、实时图形系统、ECS（Entity Component System）等内存访问模式友好、低延迟要求高的环境。
+
+它基于双向映射的 `dense + sparse` 结构，提供了极快的插入、查询和删除操作（理论上常数时间），并且顺序迭代 cache-friendly，远超传统 STL 容器如 `std::unordered_set` 在遍历和局部性方面的性能。
+
+==== 特性
+
+* 🚀 **O(1) 复杂度**：插入、删除、查找操作都为常数时间。
+* 🧠 **高局部性**：`dense_` 顺序连续排列，支持快速迭代和 SIMD 优化。
+* 🔬 **可自定义类型**：支持泛型 `T` 类型（默认 `uint32_t`），配合 `sparse_[T]` 编制索引。
+* 🛠️ **Allocator 支持**：完整支持 `std::pmr` 多态内存资源，可灵活接入内存池。
+* 🧹 **No Overhead**：结构轻量，零额外虚表，无隐性堆分配。
+* 💡 **工程友好**：纯头文件实现，易于集成；拥有 STL 风格接口、迭代器、`find`、`clear` 等标准方法。
+
+==== 性能对比
+
+基于 100 万条随机数据，三种容器的基准测试结果如下（Release / MSVC）：
+
+[source]
+----
+sparse_set run 1: 13 ms
+pmr::sparse_set run 1: 6 ms(with unsynchronized pool)
+unordered_set run 1: 90 ms
+----
+
+平均情况下，`sparse_set` 提供比 `std::unordered_set` 快约 **6~8 倍** 的插入-查找-删除性能。
+
+==== 使用示例
+
+[source,cpp]
+----
+#include "sparse_set.hpp"
+
+sparse_set<uint32_t> s;
+s.insert(42);
+if (s.contains(42)) {
+    s.erase(42);
+}
+----
+
+==== PMR 支持
+
+如果你需要分配器定制（如使用线程本地内存池、arena、monotonic 分配等），可使用 `pmr::sparse_set` 版本：
+
+[source,cpp]
+----
+std::array<std::byte, 1024 * 1024> buffer;
+std::pmr::monotonic_buffer_resource pool(buffer.data(), buffer.size());
+
+pmr_sparse_set<uint32_t> s(64, &pool);
+s.insert(1);
+----
+
+== ECS框架

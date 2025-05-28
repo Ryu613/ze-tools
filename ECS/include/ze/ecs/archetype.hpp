@@ -72,8 +72,8 @@ namespace ze::ecs {
 		~Chunk() {
 			for (size_t type_id = 0; type_id < COMPONENT_SIZE; ++type_id) {
 				if (signature_.test(type_id)) {
-					std::byte* raw_buf_ptr = static_cast<std::byte*>(component_buffers_[type_id]);
-					size_t type_size = ComponentTypeInfo::GetSize(type_id);
+					//std::byte* raw_buf_ptr = static_cast<std::byte*>(component_buffers_[type_id]);
+					//size_t type_size = ComponentTypeInfo::GetSize(type_id);
 					//for (size_t j = 0; j < count; ++j) {
 					//	ComponentTypeInfo::Destroy(type_id, raw_buf_ptr + j * type_size);
 					//}
@@ -89,11 +89,24 @@ namespace ze::ecs {
 		template<typename TComponent>
 		void InsertComponentData(Entity e, const TComponent& comp) {
 			size_t type_id = ComponentTypeInfo::GetTypeId<TComponent>();
-			assert(signature_.test(type_id) && "Component type not in this Chunk");
+			size_t size = ComponentTypeInfo::GetSize(type_id);
+			// if component not exist, then create new buffer and update signature
+			if (!signature_.test(type_id)) {
+				static_assert(std::is_default_constructible_v<TComponent>,
+					"TComponent must be default-constructible when added dynamically.");
+				component_buffers_[type_id] = (::operator new[](CHUNK_CAPACITY * size));
+				signature_.set(type_id);
+				void* buffer = component_buffers_[type_id];
+				// Fill previously existing entities with default value
+				for (size_t i = 0; i < count; ++i) {
+					new (static_cast<std::byte*>(buffer) + i * size) TComponent();
+				}
+			}
+			//assert(signature_.test(type_id) && "Component type not in this Chunk");
 			size_t index = count++;
 			entity_ids_[index] = e.GetId();
 			void* raw_buf = component_buffers_[type_id];
-			new (static_cast<std::byte*>(raw_buf) + index * ComponentTypeInfo::GetSize(type_id)) TComponent(comp);
+			new (static_cast<std::byte*>(raw_buf) + index * size) TComponent(comp);
 		}
 
 		void Remove(Entity e) {
@@ -119,6 +132,17 @@ namespace ze::ecs {
 					return;
 				}
 			}
+		}
+
+		template<typename TComponent>
+		bool RemoveComponent() {
+			size_t type_id = ComponentTypeInfo::GetTypeId<TComponent>();
+			if (!signature_.test(type_id)) {
+				return false;
+			}
+			::operator delete[](component_buffers_[type_id]);
+			signature_.flip(type_id);
+			return true;
 		}
 
 
@@ -147,16 +171,29 @@ namespace ze::ecs {
 		}
 
 		template<typename... TComponents>
-		void InsertComponentData(Entity e, const TComponents&... comps) {
+		void InsertComponentData(const Entity& e, const TComponents&... comps) {
 			Chunk* chunk = GetOrCreateChunk();
 			// insert components data to chunk
 			(...,(chunk->InsertComponentData<TComponents>(e, comps)));
 		}
 
 
-		void Remove(Entity e) {
+		void Remove(const Entity& e) {
 			for (auto& chunk : chunks_) {
 				chunk->Remove(e);
+			}
+		}
+
+		const ComponentSignature& GetSignature() {
+			return signature_;
+		}
+
+		template<typename TComponent>
+		void RemoveComponent(const Entity& e) {
+			for (auto& chunk : chunks_) {
+				if (chunk->RemoveComponent<TComponent>()) {
+					signature_.flip(ComponentTypeInfo::GetTypeId<TComponent>());
+				}
 			}
 		}
 

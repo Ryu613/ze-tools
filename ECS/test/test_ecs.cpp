@@ -37,13 +37,13 @@ int main() {
         Attr{ 120, 100 }
     );
     // add Position & Attr component data to e
-    ecs::add_component<Position, Attr>(e, Position{ 20,10,20 }, Attr{ 20, 105 });
+    ecs::add_components<Position, Attr>(e, Position{ 20,10,20 }, Attr{ 20, 105 });
     // add Position component data to e
-    ecs::add_component<Position>(e, Position{ 20, 10, 20 });
+    ecs::add_components<Position>(e, Position{ 20, 10, 20 });
     // add new component Extra to e
-    ecs::add_component<Extra>(e, Extra{});
+    ecs::add_components<Extra>(e, Extra{});
     // add new component Another and add these data to component
-    ecs::add_component<Position, Another>(e, Position{ 20,40,20 }, Another{ 1.135656888 });
+    ecs::add_components<Position, Another>(e, Position{ 20,40,20 }, Another{ 1.135656888 });
     // true
     ecs::has_components<Attr>(e);
     // remove Another component from e

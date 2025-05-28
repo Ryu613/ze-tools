@@ -1,6 +1,8 @@
 = ZE-TOOLS
 :toc:
 
+link:README_CN.adoc[中文版]
+
 lightweight {cpp} tools library
 
 [NOTE]

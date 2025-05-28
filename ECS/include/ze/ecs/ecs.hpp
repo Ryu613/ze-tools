@@ -24,44 +24,44 @@ namespace ze::ecs {
 	// add component data to exist entity with those components
 	// if component doesn't exist in this entity, then add new component
 	template<typename... TComponents, typename... ARGS>
-	void add_component(Entity e, ARGS&&... args) {
-
+	void add_components(const Entity& e, ARGS&&... args) {
+		EcsManager::Get().AddComponent<TComponents...>(e, args...);
 	}
 
 	// return true if all components are exist
 	template<typename... TComponents>
-	bool has_components(Entity e) {
-		return false;
+	bool has_components(const Entity& e) {
+		return EcsManager::Get().HasComponent<TComponents...>(e);
 	}
 
 	// remove component from this entity, if component not exists then do nothing
 	template<typename... TComponents>
-	void remove_components(Entity e) {
-
+	void remove_components(const Entity& e) {
+		EcsManager::Get().RemoveComponent<TComponents...>(e);
 	}
 
 	template<typename... TSystems>
-	void register_system() {
-
+	void register_systems() {
+		EcsManager::Get().RegisterSystem<TSystems...>();
 	}
 
-	template<typename... TSystem>
+	template<typename... TSystems>
 	void system_update() {
-
+		EcsManager::Get().TriggerSystemUpdate<TSystems...>();
 	}
 
 	void system_update_all() {
-
+		EcsManager::Get().TriggerSystemUpdate();
 	}
 
-	template<typename TSystem>
-	void enable_system() {
-
+	template<typename... TSystems>
+	void enable_systems() {
+		EcsManager::Get().EnableSystem<TSystems...>();
 	}
 
-	template<typename TSystem>
-	void disable_system() {
-
+	template<typename... TSystems>
+	void disable_systems() {
+		EcsManager::Get().DisableSystem<TSystems...>();
 	}
 	
 	template<typename... TComponents>
