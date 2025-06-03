@@ -5,17 +5,17 @@
             "name": "debug-x64",
             "inherits": "debug",
             "environment": {
-                //"C_COMPILER_PATH":"F:/dev/mingw/mingw64/bin",
-                //"CXX_COMPILER_PATH":"F:/dev/mingw/mingw64/bin"
+                "C_COMPILER_PATH":"D:/dev/mingw64/bin",
+                "CXX_COMPILER_PATH":"D:/dev/mingw64/bin"
             }
         },
         {
             "name": "release-x64",
             "inherits": "release",
-            "environment": {
-                //"C_COMPILER_PATH":"F:/dev/mingw/mingw64/bin",
-                //"CXX_COMPILER_PATH":"F:/dev/mingw/mingw64/bin"
-            }
+          "environment": {
+            "C_COMPILER_PATH": "D:/dev/mingw64/bin",
+            "CXX_COMPILER_PATH": "D:/dev/mingw64/bin"
+          }
         }
     ]
 }

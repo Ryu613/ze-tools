@@ -156,7 +156,7 @@ namespace ze {
 			}
 		}
 
-		template<typname T, size_t ALIGN = alignof(T), typename... ARGS>
+		template<typename T, size_t ALIGN = alignof(T), typename... ARGS>
 		T* make(ARGS&&... args) noexcept {
 			const void* p = alloc(sizeof(T), ALIGN);
 			return p ? new(p) T(std::forward<ARGS>(args)...) : nullptr;
